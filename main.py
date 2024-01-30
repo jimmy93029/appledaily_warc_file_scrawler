@@ -13,7 +13,7 @@ def main(dirr, website, connect, start, end):
     while times < end:
                 
         seen = {}
-        field = [times, times + 35] if times + 35 < end else [times, end]
+        field = [times, times + 20] if times + 20 < end else [times, end]
         dirrname = dirr + str(times)
         
         if not os.path.exists(dirrname):
@@ -43,14 +43,14 @@ def main(dirr, website, connect, start, end):
                 print(file_path)
 
         subprocess.run(['rm', '-r', dirrname], check=True)
-        times += 35
+        times += 10
 
 
 if __name__ == "__main__":
     dirr = os.getcwd() + "/files"
     start = 90
     end = 803
-    connect = 50
+    connect = 20
     website = "https://archive.fart.website/archivebot/viewer/job/202209030158271bpf8"
     main(dirr, website, connect, start, end)
 
