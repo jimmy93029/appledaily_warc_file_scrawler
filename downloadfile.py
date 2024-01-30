@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 
 
 async def download_file(url, output_file, connect, files_dir):
-     command = f"axel -a -n {connect} -o {files_dir} {url}"
+     command = f"axel -a -n {connect} -o {files_dir} -q {url}"
      process = await asyncio.create_subprocess_exec(*command.split())
      await process.wait()
 

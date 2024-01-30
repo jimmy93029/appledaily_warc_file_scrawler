@@ -3,16 +3,17 @@ from downloadfile import download
 from utils import write_json, unique_data, get_folder_size
 import json
 import asyncio
+import subprocess
 import os
 
 
-def main(dirr, website, connect):
+def main(dirr, website, connect, start, end):
     
-    times = 0
-    while times < 175:
+    times = start
+    while times < end:
                 
         seen = {}
-        field = [times, times + 35] if times + 35 < 175 else [times, 175]
+        field = [times, times + 35] if times + 35 < end else [times, end]
         dirrname = dirr + str(times)
         
         if not os.path.exists(dirrname):
@@ -41,13 +42,16 @@ def main(dirr, website, connect):
                 write_json(data, filename)
                 print(file_path)
 
-        times += 30
+        subprocess.run(['rm', '-r', dirrname], check=True)
+        times += 35
 
 
 if __name__ == "__main__":
     dirr = os.getcwd() + "/files"
+    start = 90
+    end = 803
     connect = 50
     website = "https://archive.fart.website/archivebot/viewer/job/202209030158271bpf8"
-    main(dirr, website, connect)
+    main(dirr, website, connect, start, end)
 
 
