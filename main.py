@@ -24,32 +24,16 @@ def main(dirr, website, connect, start, end, interval):
         # downlaod files until they are downlaod completely
         start = time.time()
         asyncio.run(download(website, field, connect, dirrname))
-        previous_size = get_folder_size(dirrname)
-        
-        """
-        while True:
-            time.sleep(60)
-            current_size = get_folder_size(dirrname)
 
-            if previous_size == current_size:
-                print("download complete")
-                break
-            else:
-                print("still downloading")
-        """
         end = time.time() 
         print(f"download interval = {interval}, connect = {connect} with time = {(end - start)/60}")
         
-        # read warc file 
-        print("start reading warc file")
-        
-        filenames = [os.path.join(dirrname, filename) for filename in os.listdir(dirrname)]        
-        
+        # read warc files 
+        filenames = [os.path.join(dirrname, filename) for filename in os.listdir(dirrname)]              
         with multiprocessing.Pool() as pool:
             datas = pool.map(process_warc, filenames)
         
-        unique_datas = [[unique_data(data[1], seen), data[0]] for data in datas]
-        
+        unique_datas = [(unique_data(data[0], seen), data[1]) for data in datas]
         with multiprocessing.Pool() as pool:
             pool.map(write_json, unique_datas)
         
