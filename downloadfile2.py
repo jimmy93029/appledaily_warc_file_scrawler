@@ -5,8 +5,11 @@ from bs4 import BeautifulSoup
 
 
 def download_file(url, connect, output_dir):
-    command = ["axel", "-n", str(connect), "-o", str(output_dir), str(url)]
-    subprocess.run(command)
+    try:
+        command = ["axel", "-n", str(connect), "-o", str(output_dir), str(url)]
+        subprocess.run(command, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error downloading {url}: {e}")
 
 
 def geturls(website):
@@ -39,8 +42,7 @@ def download(website, field, connect, files_dir):
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_processes) as executor:
         
         futures = [executor.submit(download_file, task) for task in tasks]
-        concurrent.futures.wait(futures)
-
+        concurrent.futures.wait(futures, return_when=concurrent.futures.ALL_COMPLETED)
 
 
 

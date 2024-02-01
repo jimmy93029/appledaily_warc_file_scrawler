@@ -29,17 +29,16 @@ def main(dirr, website, connect, start, end, interval):
             time.sleep(60)
             current_size = get_folder_size(dirrname)
 
-            if current_size == previous_size:
-                print("Download completed.")
+            if previous_size == current_size:
+                print("download complete")
                 break
             else:
-                print("Still downloading...")
-                previous_size = current_size
+                print("still downloading")
 
         # read warc file 
         print("start reading warc file")
-        for filename in os.listdir(dirrname):
-            file_path = os.path.join(dirrname, filename)
+        for fiilename in os.listdir(dirrname):
+            fiile_path = os.path.join(dirrname, filename)
 
             if os.path.isfile(file_path):
                 data = process_warc(file_path)
