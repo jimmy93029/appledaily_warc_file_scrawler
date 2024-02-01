@@ -1,11 +1,12 @@
-import multiprocessing
+import concurrent.futures
 import subprocess
 import requests
 from bs4 import BeautifulSoup
 
 
-def download_file(url, connect, files_dir):
-     command = f"axel -a -n {connect} -o {files_dir} -q {url}"
+def download_file(url, connect, output_dir):
+    command = ["axel", "-n", str(connect), "-o", str(output_dir), str(url)]
+    subprocess.run(command)
 
 
 def geturls(website):
@@ -32,7 +33,14 @@ def download(website, field, connect, files_dir):
 
     for i in range(field[0], field[1]):
         tasks.append((urls[i], connect, files_dir))
+ 
+    num_processes = field[1] - field[0]
 
-    with multiprocessing.Pool(process=multiprocessing.cpu_count()) as pool:
-        pool.starmap(download_file, tasks)
+    with concurrent.futures.ProcessPoolExecutor(max_workers=num_processes) as executor:
+        
+        futures = [executor.submit(download_file, task) for task in tasks]
+        concurrent.futures.wait(futures)
+
+
+
 
