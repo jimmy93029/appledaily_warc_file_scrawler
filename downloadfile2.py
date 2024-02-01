@@ -2,6 +2,7 @@ import concurrent.futures
 import subprocess
 import requests
 from bs4 import BeautifulSoup
+import os
 
 
 def download_file(url, connect, output_dir):
@@ -36,13 +37,26 @@ def download(website, field, connect, files_dir):
 
     for i in range(field[0], field[1]):
         tasks.append((urls[i], connect, files_dir))
- 
-    num_processes = field[1] - field[0]
+    
+    """
+    for i in range(field[0], field[1]):
+        download_file(urls[i], connect, files_dir)
+    """
 
+    
+    num_processes = field[1] - field[0]
+    
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_processes) as executor:
         
         futures = [executor.submit(download_file, task) for task in tasks]
         concurrent.futures.wait(futures, return_when=concurrent.futures.ALL_COMPLETED)
+    
+    print("finish ?")
 
 
+website = "https://archive.fart.website/archivebot/viewer/job/202209030158271bpf8" 
+field = [222, 225]
+connect = 10
+files_dir = os.path.join(os.getcwd(),'files222')
+download(website, field, connect, files_dir)
 
