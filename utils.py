@@ -5,9 +5,11 @@ import json
 GB = 1073741824 
 
 
-def write_json(data, name):
-
+def write_json(data, file_path):
+    
     output_dir = "datas"
+    name = os.path.basename(file_path)
+
     with open(f'{output_dir}/apple_{name}.json', 'w') as json_file:
         json.dump(data, json_file, indent=2)
     print(name)
@@ -16,6 +18,7 @@ def write_json(data, name):
 def clear_seen(seen):
     if seen.__sizeof__() > 26 * GB:
         seen = {}
+    return seen
 
 
 def unique_data(data, seen):
@@ -27,8 +30,6 @@ def unique_data(data, seen):
         if seen != None and dic['title'] not in seen and dic['title'] != "":
             seen[dic['title']] = 1
             new_data.append(dic)
-
-    clear_seen(seen)
 
     return new_data
 

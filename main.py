@@ -1,6 +1,6 @@
 from war2text import process_warc
 from downloadfile import download
-from utils import write_json, unique_data, get_folder_size
+from utils import write_json, unique_data, clear_seen, get_folder_size
 import multiprocessing
 import subprocess
 import asyncio
@@ -22,28 +22,28 @@ def main(dirr, website, connect, start, end, interval):
             print(f"mkdir {dirrname}")
         
         # downlaod files until they are downlaod completely
-        start = time.time()
+        timeon = time.time()
         asyncio.run(download(website, field, connect, dirrname))
-
-        end = time.time() 
-        print(f"download interval = {interval}, connect = {connect} with time = {(end - start)/60}")
+        timeoff = time.time() 
+        print(f"download interval = {interval}, connect = {connect} with time = {(timeon - timeoff)/60}")
         
         # read warc files 
         filenames = [os.path.join(dirrname, filename) for filename in os.listdir(dirrname)]              
         with multiprocessing.Pool() as pool:
             datas = pool.map(process_warc, filenames)
         
-        unique_datas = [(unique_data(data[0], seen), data[1]) for data in datas]
+        writing_tasks = [(unique_data(datas[i], seen), filenames[i]) for i in range(len(datas))]   
         with multiprocessing.Pool() as pool:
-            pool.map(write_json, unique_datas)
+            pool.starmap(write_json, writing_tasks)
         
+        seen = clear_seen(seen)
         subprocess.run(['rm', '-r', dirrname], check=True)
         times += interval
 
 
 if __name__ == "__main__":
     dirr = os.path.join(os.getcwd(), "files")
-    start = 226
+    start = 231
     end = 803
     connect = 10
     interval = 5

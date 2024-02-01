@@ -75,15 +75,5 @@ def process_warc(file_path):
                     if content == "" or title == "":
                         continue
                     contents.append({"title": title, 'description': description, 'content': content, 'reporter': reporter})
-    filename = file_path.split('/')[-1]
-    return [contents, filename]
-
-# warc_file = 'files/www.appledaily.com.tw-inf-20220903-015827-1bpf8-00000.warc.gz'
-# apple_daily = process_warc(warc_file)
-
-# print(apple_daily)
-# for content in apple_daily: 
-#     title, description, text = content
-#     print(f"title = {title}\n\ndescription :\n{description}\n\ncontent :\n{text}\n{'=' * 50}\n")
-
+    return contents
 
