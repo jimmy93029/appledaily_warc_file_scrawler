@@ -1,5 +1,5 @@
 from war2text import process_warc
-from downloadfile import download
+from downloadfile2 import download
 from utils import write_json, unique_data, get_folder_size
 import json
 import asyncio
@@ -7,19 +7,20 @@ import subprocess
 import os
 
 
-def main(dirr, website, connect, start, end):
+def main(dirr, website, connect, start, end, interval):
     
     times = start
     while times < end:
                 
         seen = {}
-        field = [times, times + 20] if times + 20 < end else [times, end]
+        field = [times, times + interval] if times + interval < end else [times, end]
         dirrname = dirr + str(times)
         
         if not os.path.exists(dirrname):
             os.mkdir(dirrname)
 
-        asyncio.run(download(website, field, connect, dirrname))
+        # downlaod files until they are downlaod completely
+        download(website, field, connect, dirrname)
         previous_size = get_folder_size(dirrname)
 
         while True:
@@ -33,6 +34,7 @@ def main(dirr, website, connect, start, end):
                 previous_size = current_size
                 time.sleep(60)  
 
+        # read warc file 
         for filename in os.listdir(dirrname):
             file_path = os.path.join(dirrname, filename)
 
@@ -43,15 +45,16 @@ def main(dirr, website, connect, start, end):
                 print(file_path)
 
         subprocess.run(['rm', '-r', dirrname], check=True)
-        times += 10
+        times += interval
 
 
 if __name__ == "__main__":
-    dirr = os.getcwd() + "/files"
-    start = 90
+    dirr = os.path.join(os.getcwd(), "files")
+    start = 222
     end = 803
-    connect = 20
+    connect = 10
+    interval = 8
     website = "https://archive.fart.website/archivebot/viewer/job/202209030158271bpf8"
-    main(dirr, website, connect, start, end)
+    main(dirr, website, connect, start, end, interval)
 
 
