@@ -5,11 +5,12 @@ import json
 GB = 1073741824 
 
 
-def write_json(data, code):
+def write_json(data, name):
 
     output_dir = "datas"
-    with open(f'{output_dir}/apple_{code}.json', 'w') as json_file:
+    with open(f'{output_dir}/apple_{name}.json', 'w') as json_file:
         json.dump(data, json_file, indent=2)
+    print(name)
 
 
 def clear_seen(seen):
