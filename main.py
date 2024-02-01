@@ -4,6 +4,7 @@ from utils import write_json, unique_data, get_folder_size
 import json
 import asyncio
 import subprocess
+import time
 import os
 
 
@@ -15,15 +16,17 @@ def main(dirr, website, connect, start, end, interval):
         seen = {}
         field = [times, times + interval] if times + interval < end else [times, end]
         dirrname = dirr + str(times)
-        
+       
         if not os.path.exists(dirrname):
             os.mkdir(dirrname)
+            print(f"mkdir {dirrname}")
 
         # downlaod files until they are downlaod completely
         download(website, field, connect, dirrname)
         previous_size = get_folder_size(dirrname)
 
         while True:
+            time.sleep(60)
             current_size = get_folder_size(dirrname)
 
             if current_size == previous_size:
@@ -32,9 +35,9 @@ def main(dirr, website, connect, start, end, interval):
             else:
                 print("Still downloading...")
                 previous_size = current_size
-                time.sleep(60)  
 
         # read warc file 
+        print("start reading warc file")
         for filename in os.listdir(dirrname):
             file_path = os.path.join(dirrname, filename)
 
