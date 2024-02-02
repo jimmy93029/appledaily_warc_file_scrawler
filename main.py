@@ -25,9 +25,10 @@ def main(dirr, website, connect, start, end, interval):
         timeon = time.time()
         asyncio.run(download(website, field, connect, dirrname))
         timeoff = time.time() 
-        print(f"download interval = {interval}, connect = {connect} with time = {(timeon - timeoff)/60}")
+        print(f"download interval = {interval}, connect = {connect} with time = {(timeoff - timeon)/60}")
         
         # read warc files 
+        timeon = time.time()
         filenames = [os.path.join(dirrname, filename) for filename in os.listdir(dirrname)]              
         with multiprocessing.Pool() as pool:
             datas = pool.map(process_warc, filenames)
@@ -35,7 +36,9 @@ def main(dirr, website, connect, start, end, interval):
         writing_tasks = [(unique_data(datas[i], seen), filenames[i]) for i in range(len(datas))]   
         with multiprocessing.Pool() as pool:
             pool.starmap(write_json, writing_tasks)
+        timeoff = time.time()
         
+        print(f"processing file takes {(timeoff - timeon)/60}")
         seen = clear_seen(seen)
         subprocess.run(['rm', '-r', dirrname], check=True)
         times += interval
@@ -43,9 +46,9 @@ def main(dirr, website, connect, start, end, interval):
 
 if __name__ == "__main__":
     dirr = os.path.join(os.getcwd(), "files")
-    start = 231
+    start = 266
     end = 803
-    connect = 10
+    connect = 20
     interval = 5
     website = "https://archive.fart.website/archivebot/viewer/job/202209030158271bpf8"
     main(dirr, website, connect, start, end, interval)
