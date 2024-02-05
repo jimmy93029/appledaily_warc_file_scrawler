@@ -72,7 +72,7 @@ def process_warc(file_path):
                     title, description, content = extract_text(html)
                     content, reporter = extract_reporter(content)
 
-                    if content == "" or title == "":
+                    if content == "" or content == "\n\n\n\n" or title == "":
                         continue
                     contents.append({"title": title, 'description': description, 'content': content, 'reporter': reporter})
     return contents

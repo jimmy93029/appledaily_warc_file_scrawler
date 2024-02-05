@@ -46,10 +46,10 @@ def main(dirr, website, connect, start, end, interval):
 
 if __name__ == "__main__":
     dirr = os.path.join(os.getcwd(), "files")
-    start = 266
+    start = 681
     end = 803
-    connect = 20
-    interval = 5
+    connect = 40
+    interval = 6
     website = "https://archive.fart.website/archivebot/viewer/job/202209030158271bpf8"
     main(dirr, website, connect, start, end, interval)
 
