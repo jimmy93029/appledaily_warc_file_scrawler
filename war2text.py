@@ -62,7 +62,7 @@ def valid(content_type, target_url, status_code):
     
     if content_type and content_type.startswith('text/html'):
         if status_code == 200:
-            if 'www.appledaily.com.tw' in target_url:
+            if 'www.appledaily.com.tw' in target_url and len(target_url.split('/')) >= 6:
                 return True
     return False
 
@@ -88,6 +88,4 @@ def process_warc(file_path):
                 contents.append(meta_data(title, content, reporter, record.record_date, record.headers['WARC-Target-URI']))
     return contents
 
-file_path = "www.appledaily.com.tw-inf-20220903-015827-1bpf8-00802.warc.gz"
-write_json(process_warc(file_path), "meta_802", "datas")
 
