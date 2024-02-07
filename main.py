@@ -2,13 +2,13 @@ from war2text import process_warc
 from downloadfile import download
 from utils import write_json, unique_data, clear_seen, get_folder_size
 import multiprocessing
-import subprocess
+import shutil
 import asyncio
 import time
 import os
 
 
-def main(dirr, website, connect, start, end, interval):
+def main(dirr, json_dirr, website, connect, start, end, interval):
     
     times = start
     seen = {}
@@ -33,24 +33,25 @@ def main(dirr, website, connect, start, end, interval):
         with multiprocessing.Pool() as pool:
             datas = pool.map(process_warc, filenames)
         
-        writing_tasks = [(unique_data(datas[i], seen), filenames[i]) for i in range(len(datas))]   
+        writing_tasks = [(unique_data(datas[i], seen), filenames[i], json_dirr) for i in range(len(datas))]   
         with multiprocessing.Pool() as pool:
             pool.starmap(write_json, writing_tasks)
         timeoff = time.time()
         
         print(f"processing file takes {(timeoff - timeon)/60}")
         seen = clear_seen(seen)
-        subprocess.run(['rm', '-r', dirrname], check=True)
+        shutil.rmtree(dirrname)
         times += interval
 
 
 if __name__ == "__main__":
-    dirr = os.path.join(os.getcwd(), "files")
-    start = 681
+    dirr = os.path.join(os.getcwd(), "filestw")
+    json_dirr = "datastw"
+    start = 0
     end = 803
-    connect = 40
+    connect = 35
     interval = 6
     website = "https://archive.fart.website/archivebot/viewer/job/202209030158271bpf8"
-    main(dirr, website, connect, start, end, interval)
+    main(dirr, json_dirr, website, connect, start, end, interval)
 
 
