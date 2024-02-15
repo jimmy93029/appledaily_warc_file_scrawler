@@ -28,8 +28,10 @@ def unique_data(data, seen):
         return new_data
 
     for dic in data:
-        if seen != None and dic['title'] not in seen and dic['title'] != "":
-            seen[dic['title']] = 1
+        title = dic['headlines'][0]['value']
+        subject = dic['subjects'][0]['name']
+        if seen != None and title not in seen and title != "" and subject != "video":
+            seen[title] = 1
             new_data.append(dic)
 
     return new_data
@@ -61,7 +63,8 @@ def meta_data(title, content, reporter, warc_date, target_url):
     standard = {
                 'name':'ninjs',
                 'version':'2.1',
-                'schema':"https://iptc.org/std/ninjs/ninjs-schema_2.1.json"     }
+                'schema':"https://iptc.org/std/ninjs/ninjs-schema_2.1.json"    
+    }
     acdate = target_url.split('/')[4]
     firstcreated = f"{acdate[0:4]}-{acdate[4:6]}-{acdate[6:len(acdate)]}"
     versioncreated = warc_date.date().strftime("%Y-%m-%d")
@@ -83,7 +86,7 @@ def meta_data(title, content, reporter, warc_date, target_url):
     located = re.split('[／/]', reporter)[1] if len(re.split('[／/]', reporter)) > 1 else ""
     altids = [{
         "role":"internal",
-        "value":target_url.split('/')[5]
+        "value":target_url.split('/')[5] if len(target_url.split('/')) >= 6 else ""
         }]
 
     return {"uri":uri,
