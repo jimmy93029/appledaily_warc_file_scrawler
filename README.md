@@ -21,7 +21,7 @@
 下載：
 
 範例資料:
-
+```json!
 {
     "uri": "https//www.appledaily.com.tw/entertainment/20220824/724E2C670A6767BFA1ADA8478E",
     "standard": {
@@ -62,3 +62,5 @@
       }
     ]
   }
+```
+
