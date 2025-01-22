@@ -1,0 +1,7 @@
+title: JSON Data Viewer
+description: A custom viewer for JSON data with metadata and context.
+databases:
+  database:
+    tables:
+      json_data:
+        description: A table containing structured JSON data.
