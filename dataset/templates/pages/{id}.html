@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+
+{% set rows = sql("SELECT * FROM news WHERE id = :id", {"id": id}) %}
+{% if not rows %}
+    {{ raise_404("News not found") }}
+{% endif %}
+
+{% set news = rows[0] %}
+{% set first_image = read_image_metadata(news.first_image) if news.first_image else None %}
+{% set images = [] %}
+
+{% if news.other_images %}
+    {% set other_images_list = json_string_to_list(news.other_images) %}  {# Convert JSON string to list #}
+    {% for img in other_images_list %}
+        {% set _ = images.append(read_image_metadata(img)) %}
+    {% endfor %}
+{% endif %}`
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ news.headlines }}</title>
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@appledaily">
+    <meta name="twitter:title" content="{{ news.headlines }}">
+    <meta name="twitter:description" content="{{ news.bodies[:100] }}...">
+    
+    {% if first_image %}
+        <meta name="twitter:image" content="{{ first_image.location }}">
+        <meta name="twitter:image:alt" content="{{ first_image.alt_text }}">
+    {% endif %}
+    
+    <meta property="og:url" content="{{ news.uri }}">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="{{ news.headlines }}">
+    <meta property="og:description" content="{{ news.bodies[:100] }}...">
+    
+    {% if first_image %}
+        <meta property="og:image" content="{{ first_image.location }}">
+        <meta property="og:image:alt" content="{{ first_image.alt_text }}">
+    {% endif %}
+
+    {% include "_analytics.html" %}
+    <link rel="stylesheet" href="/static/news.css">
+    <link rel="stylesheet" href="/static/photoswipe.css">
+    <script src="/static/lazysizes.min.js" async></script>
+    <script type="module">
+    import PhotoSwipeLightbox from '/static/photoswipe-lightbox.esm.js';
+    const lightbox = new PhotoSwipeLightbox({
+        gallery: '#photos',
+        children: '.gallery-photo',
+        pswpModule: '/static/photoswipe.esm.js'
+    });
+    lightbox.init();
+    </script>
+</head>
+
+<body>
+    <nav class="navbar is-black" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="/">
+                <strong>Apple Daily Archive</strong>
+            </a>
+            <a class="navbar-item" href="/about">
+                <span class="button is-small is-outlined is-white">About</span>
+            </a>
+        </div>
+    </nav>
+    
+    <section class="section" id="news-content">
+        <div class="box content">
+            <h1>{{ news.headlines }}</h1>
+            <p><strong>Published:</strong> {{ news.firstcreated }}</p>
+            <p>{{ news.bodies }}</p>
+        </div>
+    </section>
+
+    {% if images %}
+    <section class="section photos" id="photos">
+        <div class="masonry">
+        {% for image in images %}
+            {% if image and image.location and image.height and image.width %}
+                <a data-pswp-height="{{ image.height }}" data-pswp-width="{{ image.width }}" href="{{ image.location }}" class="gallery-photo">
+                    <img class="lazyload" src="{{ image.location }}" data-src="{{ image.location }}"{% if image.alt_text %} alt="{{ image.alt_text }}"{% endif %}>
+                </a>
+            {% endif %}
+        {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let el = document.querySelector('#photos');
+            el.className = 'box';
+            el.style.width = '100%';
+            el.style.height = '500px';
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,25 @@
+<div class="card box">
+    {% set first_image = read_image_metadata(news.first_image) if news.first_image else None %}
+    
+    {% if first_image %}
+    <div class="card-image">
+        <figure class="image is-4by2">
+            <a href="/{{ news.id }}">
+                <img src="{{ first_image.location }}" alt="{{ first_image.alt_text }}">
+            </a>
+        </figure>
+    </div>
+    {% endif %}
+    <div class="content">
+        {% if show_links %}
+        <h2><a href="/{{ news.id }}">{{ news.headlines }}</a></h2>
+        {% else %}
+        <h2>{{ news.headlines }}</h2>
+        {% endif %}
+
+        <p>{{ news.bodies[:200] }}...</p>
+        <p><a href="{{ news.uri }}">Read original article</a></p>
+
+        <p class="added-date">{{ nicer_date(news.firstcreated) }}</p>
+    </div>
+</div>

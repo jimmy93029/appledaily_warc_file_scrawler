@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>News Archive</title>
+    <link rel="stylesheet" href="/static/news.css">
+    {% include "_analytics.html" %}
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-XXXXX-Y"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-XXXXX-Y');
+    </script>
+</head>
+
+<body>
+    <section class="hero is-dark is-bold">
+        <div class="hero-body">
+            <div class="container">
+                <h1 class="title">News Archive</h1>
+                <h2 class="subtitle">Browse the latest news</h2>
+                <div class="columns is-mobile">
+                    <form action="/text/search">
+                        <div class="field has-addons is-pulled-right">
+                            <div class="control">
+                                <input placeholder="Search" type="text" class="input is-small" name="q" id="search-box">
+                            </div>
+                            <div class="control">
+                                <input type="submit" value="🔍" class="button is-small is-info"> 
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="cards">
+        {% set show_links = 1 %}
+        {% for news in sql("SELECT * FROM news LIMIT 100") %}
+            {% include "_news_card.html" %}
+        {% endfor %}
+    </section>
+    
+    <!-- JavaScript for Fetching Related Articles -->
+    <script>
+        document.getElementById("search-box").addEventListener("input", function() {
+            let query = this.value;
+            if (query.length > 2) {
+                fetch(`/text/search.json?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    let suggestions = document.getElementById("suggestions");
+                    suggestions.innerHTML = "";
+                    data.rows.forEach(row => {
+                        let item = document.createElement("div");
+                        item.className = "suggestion-item";
+                        item.textContent = row.headlines;
+                        item.onclick = () => {
+                            document.getElementById("search-box").value = row.headlines;
+                        };
+                        suggestions.appendChild(item);
+                    });
+                });
+            }
+        });
+    </script>
+    
+    <div id="suggestions" class="suggestions-box"></div>
+</body>
+
+</html>

@@ -1,0 +1,18 @@
+databases:
+  text:
+    queries:
+      search: |-
+        SELECT
+          *
+        FROM
+          news
+          JOIN news_fts ON news.rowid = news_fts.rowid
+        WHERE
+          news_fts MATCH :q
+        ORDER BY
+          news_fts.rank
+
+plugins:
+  render-local-images:
+    height: 150
+    width: 150
