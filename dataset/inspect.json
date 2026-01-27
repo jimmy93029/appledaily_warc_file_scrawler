@@ -1,0 +1,27 @@
+{
+  "text": {
+    "hash": "1a18e71a29c26adc62b8f2f7c736e6f2d3d84b6d827bab10b5fc20ed1323879c",
+    "size": 2762129408,
+    "file": "/mnt/data/text.db",
+    "tables": {
+      "news": {
+        "count": 610549
+      },
+      "news_fts": {
+        "count": null
+      },
+      "news_fts_data": {
+        "count": 232824
+      },
+      "news_fts_idx": {
+        "count": 252120
+      },
+      "news_fts_docsize": {
+        "count": 610549
+      },
+      "news_fts_config": {
+        "count": 1
+      }
+    }
+  }
+}

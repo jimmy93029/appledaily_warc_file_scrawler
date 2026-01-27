@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>News Archive: {{ q }}</title>
+    <link rel="stylesheet" href="/static/news.css">
+    {% include "_analytics.html" %}
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-XXXXX-Y"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'UA-XXXXX-Y');
+    </script>
+</head>
+
+<body class="search-results">
+    <nav class="navbar is-black" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="/">
+                <strong>News Archive</strong>
+            </a>
+            <a class="navbar-item" href="/about">
+                <span class="button is-small is-outlined is-white">About</span>
+            </a>
+        </div>
+    </nav>
+    
+    <section class="section smaller-padding-bottom">
+        <div class="box content">
+            <h3 class="title is-3">{{ rows.__len__() }} result{% if rows.__len__() != 1 %}s{% endif %}</h3>
+            <form action="/text/search">
+                <div class="field has-addons">
+                    <div class="control" style="width: 80%">
+                        <input placeholder="Search" type="text" class="input" id="search-input" name="q" value="{{ q }}">
+                    </div>
+                    <div class="control">
+                        <input type="submit" value="🔍" class="button is-info">
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+    
+    <section class="section" id="cards">
+        {% set show_links = 1 %}
+        {% for row in rows %}
+            {% set news = row %}
+            {% include "_news_card.html" %}
+        {% endfor %}
+    </section>
+    
+    <!-- Related Articles Section -->
+    <section class="section">
+        <div class="box content">
+            <h3 class="title is-4">Related Articles</h3>
+            <div id="related-articles"></div>
+        </div>
+    </section>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let searchQuery = "{{ q }}";
+            if (searchQuery) {
+                fetch(`/text.json?sql=SELECT+id,+headlines+FROM+news+WHERE+headlines+LIKE+%27%25${encodeURIComponent(searchQuery)}%25%27+LIMIT+5&_shape=objects`)
+                .then(response => response.json())
+                .then(data => {
+                    let relatedContainer = document.getElementById("related-articles");
+                    if (data.rows.length > 0) {
+                        data.rows.forEach(article => {
+                            let articleDiv = document.createElement("div");
+                            articleDiv.className = "box";
+                            articleDiv.innerHTML = `<a href="/news/${article.id}" class="title is-5">${article.headlines}</a>`;
+                            relatedContainer.appendChild(articleDiv);
+                        });
+                    } else {
+                        relatedContainer.innerHTML = "<p>No related articles found.</p>";
+                    }
+                })
+                .catch(error => console.error("Error fetching related articles:", error));
+            }
+        });
+    </script>
+</body>
+</html>
