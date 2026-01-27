@@ -2,12 +2,23 @@ import asyncio
 import subprocess
 import requests
 from bs4 import BeautifulSoup
+import os
 
 
 async def download_file(url, output_file, connect, files_dir):
-     command = f"axel -a -n {connect} -o {files_dir} -q {url}"
-     process = await asyncio.create_subprocess_exec(*command.split())
-     await process.wait()
+    file_path = os.path.join(files_dir, output_file)
+    file_path_st = file_path + ".st"  # Axel creates a .st file for partial downloads
+
+    # Check if the .st file does NOT exist, but the final file exists
+    if os.path.exists(file_path) and not os.path.exists(file_path_st):
+        print(f"File {file_path} already exists and is complete. Skipping download.")
+        return  # Skip download if file exists and is fully downloaded
+
+    # Resume if .st file exists 
+    command = f"axel -a -n {connect} -o {file_path} -q {url}"
+    print(f"finish downloading {file_path}")
+    process = await asyncio.create_subprocess_exec(*command.split())
+    await process.wait()
 
 
 def geturls(website):
@@ -31,7 +42,6 @@ async def download(website, field, connect, files_dir):
 
     urls = geturls(website)
     output_files = [f'file{i}.warc' for i in range(field[1])]
-
     tasks = []
 
     for i in range(field[0], field[1]):
