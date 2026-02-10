@@ -3,12 +3,15 @@ import pathlib
 import glob
 from PIL import Image
 
+
 # Define paths
+BASE_DIR = "/mnt/data/appledaily"
+BASE_NAME = "images"
 IMAGE_DIRS = [
     "/mnt/data/appledaily/*/*/*/*/img/*.jpg",  # Standard directory
     "/mnt/data/appledaily/others/*/img/*.jpg"  # Others directory
 ]
-IMAGE_METADATA_DIR = pathlib.Path("/mnt/data/images-metadata")  # Metadata storage
+IMAGE_METADATA_DIR = pathlib.Path("../images-metadata")  # Metadata storage
 
 print(" Processing images...")
 
@@ -40,8 +43,11 @@ for pattern in IMAGE_DIRS:
                     if "uri" in assoc and img_path.name in assoc["uri"]:
                         alt_text = assoc["headlines"][0]["value"]
 
+            # image name
+            img_name = BASE_NAME / img_path.relative_to(BASE_DIR) 
+
             # Create metadata JSON filename
-            metadata_file = IMAGE_METADATA_DIR / img_path.relative_to("/mnt/data/appledaily")
+            metadata_file = IMAGE_METADATA_DIR / img_path.relative_to(BASE_DIR)
             metadata_file = metadata_file.with_suffix(".jpg.json")
 
             # Ensure directories exist
@@ -54,7 +60,7 @@ for pattern in IMAGE_DIRS:
                 "width": width,
                 "height": height,
                 "alt_text": alt_text,
-                "location": str(img_path)  # Absolute path to the actual image
+                "location": str(img_name)  # Absolute path to the actual image
             }
             with open(metadata_file, "w", encoding="utf-8") as f:
                 json.dump(metadata, f, indent=4, ensure_ascii=False)

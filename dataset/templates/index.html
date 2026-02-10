@@ -25,16 +25,33 @@
                 <h1 class="title">News Archive</h1>
                 <h2 class="subtitle">Browse the latest news</h2>
                 <div class="columns is-mobile">
-                    <form action="/text/search">
+                    <!-- Search Form -->
+                    <div class="column is-half">
+                      <form action="/text/search">
                         <div class="field has-addons is-pulled-right">
+                          <div class="control">
+                            <input placeholder="Search" type="text" class="input is-small" name="q" id="search-box">
+                          </div>
+                          <div class="control">
+                            <input type="submit" value="Search by Text" class="button is-small is-info"> 
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  
+                    <!-- Date Form -->
+                    <div class="column is-half">
+                        <form action="/text/search" onsubmit="return handleDateRedirect(event)">
+                        <div class="field has-addons is-pulled-left">
                             <div class="control">
-                                <input placeholder="Search" type="text" class="input is-small" name="q" id="search-box">
+                            <input type="date" id="date" name="date" class="input is-small">
                             </div>
                             <div class="control">
-                                <input type="submit" value="🔍" class="button is-small is-info"> 
+                            <button type="submit" class="button is-small is-info">Search by Date</button>
                             </div>
                         </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -71,6 +88,19 @@
         });
     </script>
     
+    <script>
+        function handleDateRedirect(event) {
+          event.preventDefault();
+          const date = document.getElementById('date').value;
+          if (date) {
+            // Redirect to full-text search using the selected date string
+            window.location.href = `/text/search?q="${date}"`;
+          }
+          return false;
+        }
+    </script>
+        
+    <div id="results"></div>
     <div id="suggestions" class="suggestions-box"></div>
 </body>
 

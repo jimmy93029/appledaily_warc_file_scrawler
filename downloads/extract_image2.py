@@ -1,32 +1,46 @@
 from fastwarc.warc import ArchiveIterator
 from bs4 import BeautifulSoup
-from utils_ninjs3 import get_url_img_id, get_new_id
+from utils_and_ninjs3 import get_url_img_id, get_new_id
 import os
+import re
 
 
 def extract_image_info(html):
     image_info = {}
     soup = BeautifulSoup(html, 'html.parser')
+    
+    # 定義圖片附件的標準開頭 (用來自動過濾 UI 雜訊)
+    IMG_PREFIX = "https://static-arc.appledaily.com.tw"
 
-    # Loop through all <figure> tags (without class restriction)
-    for figure in soup.find_all("figure"):
-        img_tag = figure.find("img")
-
-        if not img_tag:
+    # 直接掃描所有 <img> 標籤，這比只找 <figure> 更全面
+    for img_tag in soup.find_all("img"):
+        # 1. 處理內容路徑：優先順序 data-src -> data-original -> src
+        img_uri = img_tag.get("data-src") or img_tag.get("data-original") or img_tag.get("src")
+        
+        # 2. 過濾邏輯：必須存在且符合指定的 Prefix
+        if not img_uri or not img_uri.startswith(IMG_PREFIX):
+            continue
+            
+        # 防止重複處理同一張圖
+        if img_uri in image_info:
             continue
 
-        # Extract the image URL
-        img_uri = img_tag.get("src")
+        # 3. 提取圖片說明文字 (Caption)
+        caption_text = ""
+        
+        # 尋找最近的父層容器 (支援新舊版的 figure, div 或 p)
+        parent = img_tag.find_parent(["figure", "div", "p"])
+        if parent:
+            # 搜尋可能的說明標籤，匹配 class 包含 image_text, caption, 或 text 的標籤
+            cap_tag = parent.find(["figcaption", "div", "span"], class_=re.compile("image_text|caption|text"))
+            if cap_tag:
+                caption_text = cap_tag.get_text(strip=True)
+        
+        # 如果標籤層級找不到說明，回退使用 alt 或 title 屬性
+        if not caption_text:
+            caption_text = img_tag.get("alt", "").strip() or img_tag.get("title", "").strip()
 
-        # Save image data
-        if not img_uri or not img_uri.startswith("https://static-arc.appledaily.com.tw/"):
-            continue
-
-        # Move to the parent div that contains both <figure> and the caption
-        parent_div = figure.find_parent("div")
-        caption_tag = parent_div.find("div", class_="image_text") if parent_div else None
-        caption_text = caption_tag.text.strip() if caption_tag else img_tag.get("alt", "").strip()
-
+        # 4. 依照 Ninjs 3 所需格式封裝
         image_info[img_uri] = {
             "img_id": get_url_img_id(img_uri),
             "img_name": caption_text,

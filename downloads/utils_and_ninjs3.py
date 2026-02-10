@@ -28,6 +28,54 @@ def get_url_img_id(url):
     parts = url.split('/')
     return parts[6] if len(parts) > 6 else None  # Prevent IndexError
 
+# --- 實驗版本成功的暴力解碼函式 ---
+def manual_dechunk(body_bytes):
+    if not body_bytes: return b""
+    stream = io.BytesIO(body_bytes)
+    output = io.BytesIO()
+    while True:
+        line = stream.readline()
+        if not line: break
+        line_stripped = line.strip()
+        if not line_stripped: continue
+        try:
+            if len(line_stripped) <= 8:
+                chunk_size = int(line_stripped, 16)
+                if chunk_size == 0: break 
+                chunk_data = stream.read(chunk_size)
+                output.write(chunk_data)
+                stream.read(2)
+            else:
+                output.write(line)
+        except ValueError:
+            output.write(line)
+    return output.getvalue()
+
+def decode_response_content(record, uri):
+    """
+    整合 urllib3 與暴力解碼的邏輯
+    """
+    try:
+        raw_body_bytes = record.reader.read()
+    except:
+        return b""
+
+    headers_dict = {k: v for k, v in record.http_headers.items()}
+    try:
+        # 嘗試標準解碼
+        response_wrapper = HTTPResponse(
+            body=io.BytesIO(raw_body_bytes),
+            headers=headers_dict,
+            preload_content=False
+        )
+        return response_wrapper.read(decode_content=True)
+    except:
+        # 失敗則嘗試暴力去分塊
+        transfer_encoding = headers_dict.get('Transfer-Encoding', '').lower()
+        if 'chunked' in transfer_encoding:
+            return manual_dechunk(raw_body_bytes)
+        return raw_body_bytes
+
 
 def meta_data(title, content, reporter, warc_date, uri, image_names, image_ids, image_uris):
     """Generates metadata JSON conforming to ninjs 3.0 format."""

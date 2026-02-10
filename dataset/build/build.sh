@@ -32,8 +32,16 @@ fi
 
 # Step 4: Enable full-text search (FTS) on text.db
 echo "🔍 Enabling full-text search (FTS) for text.db..."
+
 sqlite-utils disable-fts "$TEXT_DB" news || echo "⚠️ Failed to disable FTS."
-sqlite-utils enable-fts "$TEXT_DB" news headlines bodies --tokenize porter --create-triggers || echo "⚠️ Failed to enable FTS."
+sqlite-utils enable-fts "$TEXT_DB" news \
+    headlines \
+    bodies \
+    firstcreated \
+    subjects \
+    --tokenize porter \
+    --create-triggers || echo "⚠️ Failed to enable FTS."
+
 
 # Step 5: Check if FTS is working, if not, rebuild it
 echo "🔍 Checking if FTS5 index is populated..."

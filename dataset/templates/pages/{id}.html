@@ -73,7 +73,8 @@
         <div class="box content">
             <h1>{{ news.headlines }}</h1>
             <p><strong>Published:</strong> {{ news.firstcreated }}</p>
-            <p>{{ news.bodies }}</p>
+            <p>{{ news.bodies[:150] }}...</p>
+            <p><strong>The remaining part of data is masked due to intellectual property. Please connect to us if you'd like to access remaining data</strong></p>
         </div>
     </section>
 

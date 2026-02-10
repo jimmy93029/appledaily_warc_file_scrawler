@@ -4,6 +4,7 @@ import pathlib
 # Define base paths
 TEXT_DIR = pathlib.Path("/mnt/data/appledaily")  # Holds article JSON files
 IMAGE_METADATA_DIR = pathlib.Path("/mnt/data/images-metadata")  # Holds image metadata JSON files
+IMAGE_METADATA_NAME = "/mnt/data/images-metadata"
 OTHERS_DIR = TEXT_DIR / "others"  # Additional article JSON files
 OUTPUT_FILE = "/mnt/data/text.json"  # Output file
 
@@ -23,9 +24,8 @@ for file in json_files:
             data = json.load(f)
 
         # Extract article fields
-        article_id = data["altids"][0]["value"] if "altids" in data else file.stem
         article = {
-            "id": article_id,
+            "id": data["altids"][0]["value"] if "altids" in data else file.stem,
             "uri": data.get("uri", ""),
             "firstcreated": data.get("firstcreated", ""),
             "headlines": data["headlines"][0]["value"] if "headlines" in data else "",
@@ -48,12 +48,14 @@ for file in json_files:
             if images:
                 # Find metadata file for the first image (absolute path)
                 first_img_metadata = IMAGE_METADATA_DIR / article_rel_path / "img" / f"{images[0]}.json"
+                first_img_metadata_name = IMAGE_METADATA_NAME / article_rel_path / "img" / f"{images[0]}.json"
+
                 if first_img_metadata.exists():
-                    article["first_image"] = str(first_img_metadata)  # Store absolute path
+                    article["first_image"] = str(first_img_metadata_name)  # Store absolute path
 
                 # Find metadata files for other images (absolute paths)
                 article["other_images"] = [
-                    str(IMAGE_METADATA_DIR / article_rel_path / "img" / f"{img}.json")
+                    str(IMAGE_METADATA_NAME / article_rel_path / "img" / f"{img}.json")
                     for img in images[1:]
                     if (IMAGE_METADATA_DIR / article_rel_path / "img" / f"{img}.json").exists()
                 ]
