@@ -1,151 +1,156 @@
-import os
+"""Low-level decoding and ninjs 3.2 serialization helpers."""
+
+from __future__ import annotations
+
+import gzip
+import io
 import json
+import os
 import re
-from datetime import datetime
+import zlib
+from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
-GB = 1073741824
+from final_cleaning_rules import (
+    build_associations,
+    clean_text_value,
+    final_dates,
+    parse_by_and_location,
+)
 
-def write_json(data, output_dir, file_path):
-    """Writes data as a JSON file in the specified output directory."""
-    os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
-    path = os.path.join(output_dir, f"{file_path}.json")
 
-    with open(path, "w") as json_file:
-        json.dump(data, json_file, indent=2, ensure_ascii=False)
-    # print(f"write file = {file_path}")
+# Keep the source date segment for diagnostics, but do not reject an article
+# solely because that segment is malformed.  The canonical identifier is the
+# final, exactly 26-character path component.
+ARTICLE_PATH = re.compile(
+    r"^/(?P<section>[^/]+)/(?P<date>[^/]+)/(?P<id>[A-Za-z0-9]{26})/*$"
+)
 
-def get_new_id(url, status):
-    """Extracts an ID from the URL based on the type (image/text)."""
-    parts = url.split('/')
-    if status == "image" and len(parts) >= 5:
-        return parts[4]
-    elif status == "text" and len(parts) >= 6:
-        return parts[5].split('?')[0] if '?' in parts[5] else parts[5]
-    return None  # Return None if the structure is unexpected
 
-def get_url_img_id(url):
-    """Extracts image ID from a URL safely."""
-    parts = url.split('/')
-    return parts[6] if len(parts) > 6 else None  # Prevent IndexError
+def article_parts(url: str) -> tuple[str, str, str]:
+    match = ARTICLE_PATH.fullmatch(urlsplit(url).path)
+    if not match:
+        raise ValueError(f"Unsupported article URL: {url}")
+    return match.group("id"), match.group("date"), match.group("section")
 
-# --- 實驗版本成功的暴力解碼函式 ---
-def manual_dechunk(body_bytes):
-    if not body_bytes: return b""
-    stream = io.BytesIO(body_bytes)
+
+def clean_uri(raw_uri: str) -> str:
+    """Drop query parameters/fragments so the article URI can de-duplicate cleanly."""
+    parsed = urlsplit(raw_uri)
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
+
+
+def get_new_id(url: str, status: str = "text") -> str | None:
+    if status == "text":
+        try:
+            return article_parts(url)[0]
+        except ValueError:
+            return None
+    # Retained only for compatibility with older callers. External/S3 image
+    # URLs cannot reliably reveal their parent article ID.
+    parts = [part for part in urlsplit(url).path.split("/") if part]
+    return parts[-3] if len(parts) >= 3 and parts[-2] == "img" else None
+
+
+def dechunk(data: bytes) -> bytes:
+    source = io.BytesIO(data)
     output = io.BytesIO()
     while True:
-        line = stream.readline()
-        if not line: break
-        line_stripped = line.strip()
-        if not line_stripped: continue
+        size_line = source.readline()
+        if not size_line:
+            raise ValueError("missing terminating zero-size chunk")
         try:
-            if len(line_stripped) <= 8:
-                chunk_size = int(line_stripped, 16)
-                if chunk_size == 0: break 
-                chunk_data = stream.read(chunk_size)
-                output.write(chunk_data)
-                stream.read(2)
-            else:
-                output.write(line)
-        except ValueError:
-            output.write(line)
-    return output.getvalue()
+            size = int(size_line.split(b";", 1)[0].strip(), 16)
+        except ValueError as exc:
+            raise ValueError(f"invalid chunk size: {size_line[:80]!r}") from exc
+        if size == 0:
+            return output.getvalue()
+        chunk = source.read(size)
+        if len(chunk) != size:
+            raise ValueError(f"short chunk: expected {size}, got {len(chunk)}")
+        output.write(chunk)
+        if source.read(2) != b"\r\n":
+            raise ValueError("chunk missing CRLF terminator")
 
-def decode_response_content(record, uri):
-    """
-    整合 urllib3 與暴力解碼的邏輯
-    """
+
+def decode_response_content(record) -> bytes:
+    """Return transfer/content-decoded HTTP response bytes."""
+    raw = record.reader.read()
+    headers = {str(key).lower(): str(value) for key, value in record.http_headers.items()}
+    if "chunked" in headers.get("transfer-encoding", "").lower():
+        raw = dechunk(raw)
+    content_encoding = headers.get("content-encoding", "").lower().strip()
+    if content_encoding == "gzip":
+        raw = gzip.decompress(raw)
+    elif content_encoding == "deflate":
+        try:
+            raw = zlib.decompress(raw)
+        except zlib.error:
+            raw = zlib.decompress(raw, -zlib.MAX_WBITS)
+    return raw
+
+
+def decode_html(record) -> str:
+    raw = decode_response_content(record)
+    content_type = record.http_headers.get("Content-Type", "")
+    match = re.search(r"charset=([^;\s]+)", content_type, re.I)
+    charset = match.group(1).strip("\"'") if match else (record.http_charset or "utf-8")
     try:
-        raw_body_bytes = record.reader.read()
-    except:
-        return b""
-
-    headers_dict = {k: v for k, v in record.http_headers.items()}
-    try:
-        # 嘗試標準解碼
-        response_wrapper = HTTPResponse(
-            body=io.BytesIO(raw_body_bytes),
-            headers=headers_dict,
-            preload_content=False
-        )
-        return response_wrapper.read(decode_content=True)
-    except:
-        # 失敗則嘗試暴力去分塊
-        transfer_encoding = headers_dict.get('Transfer-Encoding', '').lower()
-        if 'chunked' in transfer_encoding:
-            return manual_dechunk(raw_body_bytes)
-        return raw_body_bytes
+        return raw.decode(charset, errors="replace")
+    except LookupError:
+        return raw.decode("utf-8", errors="replace")
 
 
-def meta_data(title, content, reporter, warc_date, uri, image_names, image_ids, image_uris):
-    """Generates metadata JSON conforming to ninjs 3.0 format."""
-    standard = {
-        "name": "ninjs",
-        "version": "3.0",
-        "schema": "https://www.iptc.org/std/ninjs/ninjs-schema_3.0.json"
-    }
+def write_json(data: dict, output_dir: str | Path, file_name: str) -> Path:
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = output_dir / f"{file_name}.json"
+    temporary = path.with_suffix(".json.tmp")
+    with temporary.open("w", encoding="utf-8") as stream:
+        json.dump(data, stream, indent=2, ensure_ascii=False)
+        stream.write("\n")
+    os.replace(temporary, path)
+    return path
 
-    # Ensure warc_date is a datetime object
-    if not isinstance(warc_date, datetime):
-        warc_date = datetime.strptime(warc_date, "%Y-%m-%d")  # Adjust format if needed
 
-    # Extract and format `firstcreated`
-    acdate = uri.split('/')[4] if len(uri.split('/')) >= 5 else "unknown"
-    firstcreated = f"{acdate[:4]}-{acdate[4:6]}-{acdate[6:]}" if acdate.isdigit() else "unknown"
-
-    versioncreated = warc_date.strftime("%Y-%m-%d")
-    contentcreated = datetime.now().strftime("%Y-%m-%d")  # Current timestamp
-    language = "zh-Hant-TW"
-    type_ = "text"
-
-    headlines = [{"role": "main", "value": title}]
-    subjects = [{"name": uri.split('/')[3] if len(uri.split('/')) >= 4 else "unknown"}]
-
-    bodies = [{"role": "main", "contentType": "text/plain", "value": content}]
-
-    # Extract reporter and location details
-    reporter_parts = re.split('[／/]', reporter)
-    by = reporter_parts[0] if reporter_parts else "unknown"
-    located = reporter_parts[1] if len(reporter_parts) > 1 else ""
-
-    altid = uri.split('/')[5] if len(uri.split('/')) >= 6 else ""
-    altids = [{"role": "internal", "value": altid}]
-
-    # Ensure image_names, image_ids, and image_uris have the same length
-    if not (len(image_names) == len(image_ids) == len(image_uris)):
-        raise ValueError("image_names, image_ids, and image_uris must have the same length")
-
-    # Creating associations with renditions
-    associations = [
-        {
-            "name": f"picture{i}",  # Dynamic naming: picture0, picture1, picture2, etc.
-            "uri": image_uris[i],  # Provided image URI
-            "type": "picture",
-            "headlines": [
-                {"value": image_names[i]}  # Image title
-            ],
-            "renditions": [
-                {
-                    "href": f"./{altid}/img/{image_ids[i]}.jpg",  # Uses image ID instead of name
-                    "contentType": "image/jpg"
-                }
-            ]
-        } for i in range(len(image_names))
-    ]
-
-    return {
+def meta_data(
+    *,
+    title: str,
+    content: str,
+    raw_credit: str,
+    warc_date: str | None,
+    uri: str,
+    published_candidates: list[dict],
+    modified_candidates: list[dict],
+    images: list[dict],
+) -> dict:
+    """Build the final conservative ninjs object (no genres/infoSources/creator)."""
+    uri = clean_uri(uri)
+    article_id, _date, section = article_parts(uri)
+    byline = parse_by_and_location(raw_credit)
+    associations = build_associations(article_id, images)
+    data = {
         "uri": uri,
-        "standard": standard,
-        "firstcreated": firstcreated,
-        "versioncreated": versioncreated,
-        "contentcreated": contentcreated,
-        "type": type_,
-        "language": language,
-        "headlines": headlines,
-        "subjects": subjects,
-        "bodies": bodies,
-        "associations": associations,
-        "by": by,
-        "located": located,
-        "altids": altids
+        "standard": {
+            "name": "ninjs",
+            "version": "3.2",
+            "schema": "https://iptc.org/std/ninjs/ninjs-schema_3.2.json",
+        },
     }
+    data.update(final_dates(published_candidates, modified_candidates, warc_date))
+    data["type"] = "composite" if associations else "text"
+    if associations:
+        data["profile"] = "text-photo"
+    data.update({
+        "language": "zh-Hant-TW",
+        "headlines": [{"role": "main", "value": clean_text_value(title)}],
+        "subjects": [{"name": section}],
+        "bodies": [
+            {"role": "main", "contentType": "text/plain", "value": clean_text_value(content)}
+        ],
+        "associations": associations,
+        "by": byline["by"],
+        "located": byline["located"],
+        "altIds": [{"role": "internal", "value": article_id}],
+    })
+    return data
