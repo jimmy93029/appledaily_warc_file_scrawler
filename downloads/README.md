@@ -14,10 +14,14 @@
   不使用容易誤收偽造網址的單純 `"appledaily" in URL`。
 - 不使用 `except: pass`；traceback 與每個 WARC 的 summary 都寫入主控台／nohup log。
 - 直接輸出 ninjs 3.2 `standard` 宣告。
-- 從 HTML meta / JSON-LD 取得 `firstCreated`。
+- `firstCreated` 依序採用 `NewsArticle.datePublished`、
+  `article:published_time`、`VideoObject.uploadDate`、主文第一個
+  `.timestamp`、`time[datetime]`、主文第一個 `<time>` 日期；全部缺少時
+  才使用 URL 的 `YYYYMMDD` 並補為台灣時間 `T00:00:00+08:00`。
 - 使用程式產出 JSON 的當下台灣時間填入 `contentCreated`。
 - 使用 `WARC-Date` 填入 `versionCreated`，並統一轉成 `+08:00`。
-- 日期必須包含時間與時區；缺少時不製造午夜時間。
+- HTML 日期必須包含時間與時區；只有合法的 URL `YYYYMMDD` 日期可補為
+  台灣時間午夜，沒有 URL 日期時不猜測。
 - 移除文章 `uri` 的 query parameters 與 fragment，方便去重。
 - article ID 只從 URL path 取得；`?utm_*`、fragment、percent-encoded
   尾端空白不會成為 ID 的一部分。
@@ -92,9 +96,9 @@ nohup /home/jimmywu/sinica/venv/bin/python -u \
 每次只下載一個 WARC 到 output root，處理成功後立即刪除；轉換結果直接位於
 `appledaily_teacher_test_0_1/YEAR/MONTH/DAY/ARTICLE_ID/`。
 
-日期目錄依序採用正常 URL 日期、HTML `firstCreated`；兩者都無法提供合法日期時，
-才以 WARC 的 `versionCreated` 擷取日作為目錄 fallback，並在 summary 計數。這個
-fallback 不會被寫成文章的 `firstCreated`。
+日期目錄依序採用正常 URL 日期、HTML／URL fallback 的 `firstCreated`；兩者都無法
+提供合法日期時，才以 WARC 的 `versionCreated` 擷取日作為目錄 fallback，並在
+summary 計數。WARC fallback 不會被寫成文章的 `firstCreated`。
 
 ## 下載並批次處理
 

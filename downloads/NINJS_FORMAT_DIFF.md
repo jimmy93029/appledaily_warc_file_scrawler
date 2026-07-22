@@ -19,11 +19,13 @@ consistent subset of the full IPTC schema.
 | URI | could retain query/fragment | canonical article URI without query/fragment |
 | Credit in body | extraction could remove it | retained in `bodies`; also parsed into `by` and `located` |
 
-Date-only legacy values are useful for directory placement, but they are not
-invented as midnight timestamps.  If an exact time and timezone cannot be
-recovered, the converter omits that optional ninjs date property.  Current
-WARC extraction recovers `firstCreated` from page metadata and
-`versionCreated` from `WARC-Date`.
+Date-only legacy JSON values remain limited to directory placement.  Current
+WARC extraction recovers `firstCreated` in this order: `NewsArticle.datePublished`,
+`article:published_time`, `VideoObject.uploadDate`, the first main `.timestamp`,
+`time[datetime]`, the first main `<time>` date, and finally a valid `YYYYMMDD`
+article URL segment as Taiwan midnight (`T00:00:00+08:00`).  URLs without a
+valid date do not receive an invented value.  `versionCreated` continues to
+come from `WARC-Date`.
 
 ## Canonical property order
 

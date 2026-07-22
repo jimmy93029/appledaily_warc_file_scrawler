@@ -126,7 +126,7 @@ def meta_data(
 ) -> dict:
     """Build the final conservative ninjs object (no genres/infoSources/creator)."""
     uri = clean_uri(uri)
-    article_id, _date, section = article_parts(uri)
+    article_id, uri_date, section = article_parts(uri)
     byline = parse_by_and_location(raw_credit)
     associations = build_associations(article_id, images)
     data = {
@@ -137,7 +137,14 @@ def meta_data(
             "schema": "https://iptc.org/std/ninjs/ninjs-schema_3.2.json",
         },
     }
-    data.update(final_dates(published_candidates, modified_candidates, warc_date))
+    data.update(
+        final_dates(
+            published_candidates,
+            modified_candidates,
+            warc_date,
+            url_date=uri_date,
+        )
+    )
     data["type"] = "composite" if associations else "text"
     if associations:
         data["profile"] = "text-photo"

@@ -116,6 +116,93 @@ def date_candidates(soup: BeautifulSoup, meta_keys, ld_key: str) -> list[dict]:
     return candidates
 
 
+def json_ld_has_type(obj: dict[str, Any], wanted: str) -> bool:
+    value = obj.get("@type")
+    values = value if isinstance(value, list) else [value]
+    return any(isinstance(item, str) and item.casefold() == wanted.casefold() for item in values)
+
+
+def add_string_values(
+    candidates: list[dict], value: Any, *, source: str, kind: str
+) -> None:
+    values = value if isinstance(value, list) else [value]
+    for item in values:
+        if isinstance(item, str) and item.strip():
+            candidates.append({"value": item.strip(), "source": source, "kind": kind})
+
+
+def publication_candidates(soup: BeautifulSoup) -> list[dict]:
+    """Collect publication evidence in the project's required priority order."""
+    candidates = []
+
+    ld_objects = json_ld_objects(soup)
+    for index, obj in enumerate(ld_objects):
+        if json_ld_has_type(obj, "NewsArticle"):
+            add_string_values(
+                candidates,
+                obj.get("datePublished"),
+                source=f"json-ld[{index}].NewsArticle.datePublished",
+                kind="newsarticle-date-published",
+            )
+
+    for attribute, value in PUBLISHED_META_KEYS:
+        tag = soup.find("meta", attrs={attribute: re.compile(f"^{re.escape(value)}$", re.I)})
+        if tag and tag.get("content"):
+            candidates.append(
+                {
+                    "value": tag["content"].strip(),
+                    "source": f"meta[{attribute}={value}]",
+                    "kind": "article-published-meta",
+                }
+            )
+
+    for index, obj in enumerate(ld_objects):
+        if json_ld_has_type(obj, "VideoObject"):
+            add_string_values(
+                candidates,
+                obj.get("uploadDate"),
+                source=f"json-ld[{index}].VideoObject.uploadDate",
+                kind="video-upload-date",
+            )
+
+    # The first timestamp is the main article/video timestamp in observed
+    # Apple Daily pages. Later timestamps belong to recommendation cards.
+    tag = soup.select_one(".timestamp")
+    if tag:
+        value = tag.get_text(" ", strip=True)
+        if value:
+            candidates.append(
+                {
+                    "value": value,
+                    "source": "html[class~=timestamp][0]",
+                    "kind": "html-timestamp",
+                }
+            )
+
+    tag = soup.select_one("time[datetime]")
+    if tag and tag.get("datetime"):
+        candidates.append(
+            {
+                "value": tag["datetime"].strip(),
+                "source": "html[time][datetime]",
+                "kind": "html-time-datetime",
+            }
+        )
+
+    tag = soup.find("time")
+    if tag:
+        value = tag.get_text(" ", strip=True)
+        if value:
+            candidates.append(
+                {
+                    "value": value,
+                    "source": "html[time].text",
+                    "kind": "html-time-date",
+                }
+            )
+    return candidates
+
+
 def strip_promotional_tail(text: str) -> str:
     markers = ("《蘋果新聞網》", "「升級壹會員」", "《升級壹會員》", "一指在APP內訂閱")
     positions = [text.find(marker) for marker in markers if text.find(marker) >= 0]
@@ -215,7 +302,7 @@ def extract_text(raw_html: str) -> dict:
         "title": title,
         "content": content,
         "raw_credit": raw_credit,
-        "published_candidates": date_candidates(soup, PUBLISHED_META_KEYS, "datePublished"),
+        "published_candidates": publication_candidates(soup),
         "modified_candidates": date_candidates(soup, MODIFIED_META_KEYS, "dateModified"),
         "method": method,
         "extraction_warnings": extraction_warnings,

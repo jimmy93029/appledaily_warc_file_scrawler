@@ -52,12 +52,71 @@ def is_exact_datetime(value: Any) -> bool:
 
 
 def choose_exact_datetime(candidates: list[dict]) -> str | None:
-    """Return the first exact evidenced value; never manufacture midnight."""
+    """Return the first exact evidenced metadata value."""
     for candidate in candidates:
         value = candidate.get("value")
         if is_exact_datetime(value):
             return value.strip()
     return None
+
+
+def parse_local_visible_datetime(value: Any, *, allow_date_only: bool) -> str | None:
+    """Parse an Apple Daily visible date/time as Taiwan local time."""
+    if not isinstance(value, str):
+        return None
+    value = re.sub(r"^\s*出版時間\s*", "", value.strip())
+    date_time_pattern = re.compile(
+        r"^\s*(?P<year>\d{4})[/-](?P<month>\d{1,2})[/-](?P<day>\d{1,2})"
+        r"\s+(?P<hour>\d{1,2}):(?P<minute>\d{2})(?::(?P<second>\d{2}))?\s*$"
+    )
+    match = date_time_pattern.fullmatch(value)
+    if match:
+        parts = {name: int(match.group(name) or 0) for name in (
+            "year", "month", "day", "hour", "minute", "second"
+        )}
+    elif allow_date_only:
+        date_pattern = re.compile(
+            r"^\s*(?P<year>\d{4})(?:年|[/-])(?P<month>\d{1,2})(?:月|[/-])"
+            r"(?P<day>\d{1,2})日?\s*$"
+        )
+        match = date_pattern.fullmatch(value)
+        if not match:
+            return None
+        parts = {"year": int(match.group("year")), "month": int(match.group("month")),
+                 "day": int(match.group("day")), "hour": 0, "minute": 0, "second": 0}
+    else:
+        return None
+    try:
+        return datetime(**parts, tzinfo=TAIWAN_TZ).isoformat()
+    except ValueError:
+        return None
+
+
+def choose_publication_datetime(candidates: list[dict]) -> str | None:
+    """Return the first valid value from already priority-ordered evidence."""
+    for candidate in candidates:
+        kind = candidate.get("kind")
+        value = candidate.get("value")
+        if kind == "html-timestamp":
+            parsed = parse_local_visible_datetime(value, allow_date_only=True)
+        elif kind == "html-time-date":
+            parsed = parse_local_visible_datetime(value, allow_date_only=True)
+        else:
+            parsed = to_taiwan_time(value) if is_exact_datetime(value) else None
+        if parsed:
+            return parsed
+    return None
+
+
+def url_date_to_first_created(value: str | None) -> str | None:
+    """Convert an evidenced YYYYMMDD URL segment to Taiwan midnight."""
+    if not isinstance(value, str) or not re.fullmatch(r"(?:19|20)\d{6}", value):
+        return None
+    try:
+        parsed = datetime.strptime(value, "%Y%m%d")
+    except ValueError:
+        return None
+    return parsed.replace(tzinfo=TAIWAN_TZ).isoformat()
 
 
 def taiwan_now_iso() -> str:
@@ -99,12 +158,23 @@ def final_dates(
     published_candidates: list[dict],
     modified_candidates: list[dict],
     warc_date: str | None,
+    url_date: str | None = None,
 ) -> dict[str, str]:
-    """Map evidenced dates to official ninjs camelCase fields."""
+    """Map evidenced dates to official ninjs camelCase fields.
+
+    ``published_candidates`` arrives in the required evidence order:
+    NewsArticle, article meta, VideoObject, main timestamp, and time elements.
+    Only after all candidates fail does a valid YYYYMMDD URL segment become
+    local midnight in Taiwan.
+    """
     result: dict[str, str] = {}
-    first_created = choose_exact_datetime(published_candidates)
+    first_created = choose_publication_datetime(published_candidates)
     if first_created:
-        result["firstCreated"] = to_taiwan_time(first_created)
+        result["firstCreated"] = first_created
+    else:
+        url_first_created = url_date_to_first_created(url_date)
+        if url_first_created:
+            result["firstCreated"] = url_first_created
     version_created = to_taiwan_time(warc_date)
     if version_created:
         result["versionCreated"] = version_created

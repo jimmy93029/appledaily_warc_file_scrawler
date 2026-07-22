@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from extract_text import extract_text, valid_url
+from final_cleaning_rules import final_dates
 from organize_deduplicate import PreflightError, convert_record, organize
 
 
@@ -42,6 +43,120 @@ def record(version: str, body: str = "正文") -> dict:
 
 
 class NinjsPipelineTest(unittest.TestCase):
+    @patch("extract_text.trafilatura.extract")
+    def test_publication_evidence_is_collected_in_required_priority(self, mocked) -> None:
+        mocked.return_value = json.dumps({"text": "這是一段有效的中文新聞正文。"})
+        html = """
+        <html><head><title>標題</title>
+        <meta property="article:published_time" content="2022-02-02T02:00:00+08:00">
+        <script type="application/ld+json">
+        {"@type":"VideoObject","uploadDate":"2022-03-03T03:00:00+08:00"}
+        </script>
+        <script type="application/ld+json">
+        {"@type":"NewsArticle","datePublished":"2022-01-01T01:00:00+08:00"}
+        </script></head><body>
+        <div class="timestamp">2022/04/04 04:00</div>
+        <time datetime="2022-05-05T05:00:00+08:00">2022年05月05日</time>
+        </body></html>
+        """
+        extracted = extract_text(html)
+        candidates = extracted["published_candidates"]
+        self.assertEqual(
+            [candidate["kind"] for candidate in candidates],
+            [
+                "newsarticle-date-published",
+                "article-published-meta",
+                "video-upload-date",
+                "html-timestamp",
+                "html-time-datetime",
+                "html-time-date",
+            ],
+        )
+        dates = final_dates(candidates, [], None, url_date="20220606")
+        self.assertEqual(dates["firstCreated"], "2022-01-01T01:00:00+08:00")
+
+    @patch("extract_text.trafilatura.extract")
+    def test_video_upload_date_precedes_main_timestamp(self, mocked) -> None:
+        mocked.return_value = json.dumps({"text": "這是一段有效的中文新聞正文。"})
+        html = """
+        <html><head><title>標題</title>
+        <script type="application/ld+json">
+        {"@type":"VideoObject","uploadDate":"2022-02-10T20:35:29+08:00"}
+        </script></head><body>
+        <div class="timestamp">2022/02/10 20:35</div>
+        </body></html>
+        """
+        extracted = extract_text(html)
+        dates = final_dates(extracted["published_candidates"], [], None, url_date="sports")
+        self.assertEqual(dates["firstCreated"], "2022-02-10T20:35:29+08:00")
+
+    def test_time_datetime_and_visible_date_fallbacks(self) -> None:
+        datetime_candidate = [
+            {"value": "2022-05-05T05:06:07+08:00", "kind": "html-time-datetime"}
+        ]
+        self.assertEqual(
+            final_dates(datetime_candidate, [], None)["firstCreated"],
+            "2022-05-05T05:06:07+08:00",
+        )
+        date_candidate = [{"value": "2022年05月05日", "kind": "html-time-date"}]
+        self.assertEqual(
+            final_dates(date_candidate, [], None)["firstCreated"],
+            "2022-05-05T00:00:00+08:00",
+        )
+
+    def test_url_date_fills_missing_first_created_at_taiwan_midnight(self) -> None:
+        dates = final_dates([], [], None, url_date="20220101")
+        self.assertEqual(dates["firstCreated"], "2022-01-01T00:00:00+08:00")
+
+    @patch("extract_text.trafilatura.extract")
+    def test_html_timestamp_precedes_url_date(self, mocked) -> None:
+        mocked.return_value = json.dumps({"text": "這是一段有效的中文新聞正文。"})
+        extracted = extract_text(
+            '<html><head><title>標題</title></head><body>'
+            '<div class="timestamp">2022/02/10 20:35</div></body></html>'
+        )
+        dates = final_dates(
+            extracted["published_candidates"],
+            [],
+            None,
+            url_date="20220209",
+        )
+        self.assertEqual(dates["firstCreated"], "2022-02-10T20:35:00+08:00")
+
+    def test_invalid_html_timestamp_falls_back_to_url_date(self) -> None:
+        dates = final_dates(
+            [{"value": "2022/02/30 20:35", "kind": "html-timestamp"}],
+            [],
+            None,
+            url_date="20220209",
+        )
+        self.assertEqual(dates["firstCreated"], "2022-02-09T00:00:00+08:00")
+
+    def test_exact_metadata_date_takes_precedence_over_url_date(self) -> None:
+        dates = final_dates(
+            [{"value": "2022-01-01T03:04:05Z", "source": "json-ld[0].datePublished"}],
+            [],
+            None,
+            url_date="20211231",
+        )
+        self.assertEqual(dates["firstCreated"], "2022-01-01T11:04:05+08:00")
+
+    def test_exact_metadata_date_takes_precedence_over_html_timestamp(self) -> None:
+        dates = final_dates(
+            [
+                {"value": "2022-01-01T03:04:05Z", "source": "json-ld[0].datePublished"},
+                {"value": "2022/02/10 20:35", "kind": "html-timestamp"},
+            ],
+            [],
+            None,
+            url_date="20211231",
+        )
+        self.assertEqual(dates["firstCreated"], "2022-01-01T11:04:05+08:00")
+
+    def test_invalid_or_non_date_url_segment_does_not_fill_first_created(self) -> None:
+        self.assertNotIn("firstCreated", final_dates([], [], None, url_date="local"))
+        self.assertNotIn("firstCreated", final_dates([], [], None, url_date="20220230"))
+
     def test_real_appledaily_subdomain_and_query_id_are_accepted(self) -> None:
         self.assertTrue(
             valid_url(
