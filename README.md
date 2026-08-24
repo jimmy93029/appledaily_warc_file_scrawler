@@ -1,64 +1,100 @@
-# 台灣蘋果日報歷史資料整理
+# 台灣《蘋果日報》網站典藏資料集產製工具
 
-工作日誌：https://hackmd.io/@jimmywupika/HyfuxFiF6
+本 repository 將 ArchiveBot 保存的台灣《蘋果日報》WARC 網頁典藏轉換為可供研究使用的新聞文字、metadata 與圖片資料。目前 converter 輸出以 **ninjs 3.2** 為基礎的 project profile，並以 Git tags 保存 V1、V2 與 V3 程式歷史。
 
-原始資料：https://archive.fart.website/archivebot/viewer/job/202209030158271bpf8
+> [!IMPORTANT]
+> 完整資料集尚無已驗證的公開下載網址、正式 licence、publisher 或 dataset PID。新聞文字與圖片可受著作權、隱私與研究倫理規範；使用或重新散布前請先確認權利與適用條件。
 
-資料擁有單位：蘋果日報
+## Dataset at a glance
 
-語言：繁體中文
+| Item | Value |
+| --- | --- |
+| Source | [ArchiveBot job `202209030158271bpf8`](https://archive.fart.website/archivebot/viewer/job/202209030158271bpf8) |
+| Coverage | 2003–2022 |
+| Language tag | Traditional Chinese (`zh-Hant-TW`)；程式統一指定，未逐筆偵測 |
+| Current code | V3 / `dataset-v3` / `4acdaa1` |
+| Current output | ninjs 3.2 JSON and archived images |
+| Layout | `YEAR/MONTH/DAY/ARTICLE_ID/` |
+| Archive inventory | 804 numbered WARC shards (`00000`–`00803`) plus `meta.warc.gz` |
 
-格式：JSON
+本資料由網頁典藏重新解析，並非從《蘋果日報》原始資料庫匯出。典藏 coverage、網站版型、擷取、清理及去重規則都可能影響最終結果，因此不應宣稱資料完整涵蓋所有歷史新聞。
 
-資料時間：2003 至 2022 年
+## Documentation
 
-歷史資料描述：此歷史資料整理自台灣蘋果日報的網站典藏檔案，新聞發布年份涵蓋 2003 至 2022 年。新聞網頁中的廣告已妥善移除，各篇新聞的主題可從 `subjects` 欄位查看。
+完整的英文 dataset datasheet 以物件化方式分層維護：
 
-資料筆數：約 953,175 筆
+- **Documentation index:** [documentation/main.md](documentation/main.md)
+- [Description](documentation/description.md)
+- [Supported applications](documentation/applications.md)
+- [Distribution and licensing](documentation/distribution.md)
+- [Composition, fields, and statistics](documentation/composition.md)
+- [Collection and processing](documentation/collection-process.md)
+- [Versioning and maintenance](documentation/lifecycle.md)
+- [Responsible use, ethics, and limitations](documentation/responsible-use.md)
 
-大小：約 500 GB
+欄位狀態明確區分為 `VERIFIED`、`PARTIAL`、`UNKNOWN`、`NOT APPLICABLE`、`DEFERRED (>30 min)` 與 `HUMAN DECISION REQUIRED`。
 
-下載：（待補）
+## Repository layout
 
-範例資料：
+```text
+.
+├── documentation/   # Dataset datasheet and responsible-use documentation
+├── downloads/       # WARC download, extraction, cleaning, and deduplication
+├── smoke-test/      # Pipeline tests, diagnostics, and archive audits
+└── dataset/         # Optional Datasette/SQLite presentation tooling
+```
 
-```json
-{
-    "uri": "https://www.appledaily.com.tw/entertainment/20220824/724E2C670A6767BFA1ADA8478E",
-    "standard": {
-      "name": "ninjs",
-      "version": "2.1",
-      "schema": "https://iptc.org/std/ninjs/ninjs-schema_2.1.json"
-    },
-    "firstcreated": "2022-08-24",
-    "versioncreated": "2022-09-03",
-    "contentcreated": "2024-02-15",
-    "type": "text",
-    "language": "zh-Hant-TW",
-    "headlines": [
-      {
-        "role": "main",
-        "value": "時尚｜RIMOWA溝槽紋美妝手機殼　多色炫彩俏搭行李箱｜蘋果新聞網｜蘋果日報"
-      }
-    ],
-    "subjects": [
-      {
-        "name": "entertainment"
-      }
-    ],
-    "bodies": [
-      {
-        "role": "main",
-        "value": "\n以前衛而耐用設計行李箱打響時尚美名的德國品牌RIMOWA，為許多商務差旅人士、旅行生活家所愛用，品牌至今124年歷史的工藝底蘊，也在近年於行李箱之外，開拓包括箱型小包款、iPhone Accessories手機配件等新旅行配件類別，設計上也連貫經典行李箱溝槽式設計外觀及品牌Logo，即呈現一如既往地細膩奢華質感，最新開賣的iPhone 13 Pro /Pro Max手機保護殼，並推出多款色彩選擇，還能搭配自己的行李箱顏色，展現個人美感品味。\n\n新款RIMOWA手機保護殼，採用聚碳酸酯材質製作，以細膩的溝槽式紋路提供舒適順手的抓握手機感，同時保護手機避免磨損和刮擦，並且輕量。\n\n保護殼分別以iPhone 13 Pro與iPhone 13 Pro Max兩款手機型號尺寸，推出包括金屬銀色、炫彩、薰衣草紫、霧黑色與火鶴紅等色款，其中光澤質感高級的銀色款，風格簡約低調；炫彩款式則流淌著細膩精緻的光線游彩；薰衣草紫則散發著南法浪漫氣息；火鶴紅的搶眼和熱情更是充滿個性，還有霧黑色款的穩重，色色皆美型。"
-      }
-    ],
-    "by": "###",
-    "located": "台北報導",
-    "altids": [
-      {
-        "role": "internal",
-        "value": "724E2C670A6767BFA1ADA8478E"
-      }
-    ]
-  }
+技術細節請參閱 [downloads/README.md](downloads/README.md)；ninjs 新舊格式差異見 [downloads/NINJS_FORMAT_DIFF.md](downloads/NINJS_FORMAT_DIFF.md)；測試與 audit 說明見 [smoke-test/README.md](smoke-test/README.md)。
+
+## Requirements
+
+已驗證的本機環境為 Ubuntu 22.04、Python 3.10、FastWARC 0.3.2、Beautiful Soup 4.12.3、Trafilatura 2.0.0、ftfy 6.3.1 與 requests 2.31.0。下載 WARC 另需 `axel`。
+
+Repository 目前尚無 downloads pipeline 的完整 lock file；可以已驗證版本建立環境：
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install \
+  FastWARC==0.3.2 beautifulsoup4==4.12.3 requests==2.31.0 \
+  trafilatura==2.0.0 ftfy==6.3.1
+```
+
+## Quick start
+
+請先由操作者建立全新的 output root，再用少量 WARC shards 測試：
+
+```bash
+mkdir -p /mnt/data/appledaily_v3_new
+
+PYTHONPATH=downloads .venv/bin/python downloads/main.py \
+  --start 0 --end 2 \
+  --connect 5 \
+  --output /mnt/data/appledaily_v3_new
+```
+
+`--end` 為 exclusive；上述指令處理 shards 0 與 1。全量處理需 `--start 0 --end 804`，會耗時很久並使用大量儲存空間，請先確認輸出路徑、容量、log 與斷點策略。
+
+## Versions
+
+| Dataset | Git reference | Summary |
+| --- | --- | --- |
+| V1 | `dataset-v1` / `f747ffd` | 2024 text extraction and advertising cleanup |
+| V2 | `dataset-v2` / `da0438d` | Image and Datasette/SQLite tooling expansion |
+| V3 | `dataset-v3` / `4acdaa1` | Current WARC decoding, date recovery, image association, ninjs 3.2, and deduplication |
+
+```bash
+git checkout dataset-v3
+```
+
+`master` 持續更新，不一定等同歷史資料集產製時的程式。重現或引用特定版本時，請同時記錄 tag 與 commit。
+
+## Citation and licence status
+
+本 repository 尚無 `LICENSE`、`CITATION.cff` 或已核准的 dataset citation。在 publisher、licence、release version、下載 URL 與 PID 確定前，請勿虛構 DOI 或授權條款。
+
+引用程式碼時至少請標明 repository、tag、commit 與存取日期：
+
+```text
+jimmy93029/appledaily_warc_file_scrawler,
+dataset-v3, commit 4acdaa1, accessed YYYY-MM-DD.
 ```
